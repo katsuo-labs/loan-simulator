@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>住宅ローン金利シミュレーター｜変動と固定を自分の金利シナリオで比較</title>
+<meta name="description" content="変動金利が将来どう上がるかを自分でシナリオ設定して、固定金利と総返済額・月々の返済額を比較できる無料シミュレーター。5年ルール・125%ルール、繰上返済にも対応。登録不要・広告なし・データはブラウザ内にのみ保存されます。">
+<meta property="og:title" content="住宅ローン金利シミュレーター">
+<meta property="og:description" content="変動金利の上昇シナリオを自分で設定して固定金利と比較。5年ルール・繰上返済対応の無料ツール。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://katsuo-labs.github.io/loan-simulator/">
+<link rel="canonical" href="https://katsuo-labs.github.io/loan-simulator/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --sub: #86868b;
+    --faint: #a1a1a6;
+    --accent: #0071e3;
+    --accent-light: #eaf3fd;
+    --green: #248a3d;
+    --orange: #f56300;
+    --red: #e30000;
+    --line: rgba(0, 0, 0, 0.08);
+    --border: #d2d2d7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px 22px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .subtitle { color: var(--sub); font-size: 13px; margin-top: 4px; letter-spacing: -0.01em; }
+  .page-head { max-width: 1280px; margin: 0 auto 32px; display: flex; align-items: center; gap: 16px; }
+  .page-head .logo { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 12px; }
+  .layout { display: grid; grid-template-columns: 400px 1fr; gap: 18px; max-width: 1280px; margin: 0 auto; }
+  .layout > div { min-width: 0; }  /* 表などの最小幅がカラムを押し広げないように */
+  .card {
+    background: var(--card);
+    border: none;
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 18px;
+    box-shadow: none;
+  }
+  .card h2 { font-size: 17px; font-weight: 600; margin-bottom: 18px; letter-spacing: -0.01em; }
+  label { font-size: 12px; color: var(--sub); display: block; margin-bottom: 5px; }
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 14.5px;
+    background: #fff;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15); }
+  .row { display: flex; gap: 12px; margin-bottom: 14px; }
+  .row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+  .check-row { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; margin: 12px 0; }
+  .check-row input { width: auto; margin-top: 4px; accent-color: var(--accent); }
+  .phase { margin-bottom: 10px; padding: 14px 16px; background: var(--bg); border-radius: 14px; }
+  .phase .phase-inputs { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 6px; }
+  .phase .num { font-size: 12px; color: var(--faint); font-weight: 500; padding-bottom: 10px; min-width: 16px; }
+  .phase .phase-inputs > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+  .phase button { background: none; border: none; color: #c7c7cc; cursor: pointer; font-size: 14px; padding: 4px; }
+  .phase button:hover { color: var(--red); }
+  .phase .caption { font-size: 11.5px; color: var(--sub); padding-left: 25px; letter-spacing: -0.01em; }
+  .phase .caption .warn { color: var(--red); }
+  .btn-add {
+    width: 100%;
+    padding: 9px;
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .btn-add:hover { background: var(--accent-light); }
+  .btn-save {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 980px;
+    cursor: pointer;
+    font-size: 14.5px;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .btn-save:hover { background: #0077ed; }
+  .btn-reset {
+    padding: 8px 18px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 980px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .btn-reset:hover { border-color: #86868b; }
+  .timeline { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+  .tl-card { flex: 1 1 215px; min-width: 0; padding: 22px 24px; border-radius: 16px; border: none; background: var(--bg); }
+  .tl-card .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 0; border-radius: 0; margin-bottom: 10px; background: none; }
+  .tl-card .when { font-size: 12px; color: var(--sub); }
+  .tl-card .big { font-size: 30px; font-weight: 600; margin: 2px 0 14px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .tl-card.blue .tag { color: var(--accent); }
+  .tl-card.orange .tag { color: var(--orange); }
+  .tl-card.green { background: var(--bg); }
+  .tl-card.green .tag { color: var(--sub); }
+  .tl-card.green .big { color: var(--accent); font-size: 24px; font-weight: 700; line-height: 1.4; }
+  .tl-card.red { background: #fff2f2; }
+  .tl-card.red .tag { color: var(--red); }
+  .tl-card.red .big { color: var(--red); font-size: 16px; font-weight: 600; }
+  .tl-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--sub); border-top: 1px solid var(--line); padding: 6px 0; }
+  .tl-row b { color: var(--text); font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+  canvas { width: 100%; height: 320px; display: block; }
+  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--sub); margin-top: 12px; flex-wrap: wrap; }
+  .legend span.item { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 99px; display: inline-block; vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: #fff; color: var(--sub); font-weight: 500; font-size: 11.5px; position: sticky; top: 0; }
+  thead tr.grp-row th { font-size: 11px; text-align: center; background: var(--bg); padding: 5px 8px; }
+  thead tr:nth-child(2) th { top: 26px; }
+  th.sep-l, td.sep-l { border-left: 1px solid var(--line); }
+  td:first-child, th:first-child { text-align: left; }
+  tbody tr:hover td { background: var(--bg); }
+  .table-wrap { max-height: 440px; overflow: auto; border-radius: 12px; }
+  td.neg { color: var(--red); }
+  .note { font-size: 12px; color: var(--sub); margin-top: 12px; letter-spacing: -0.01em; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  .plan-name { width: 120px; padding: 4px 8px; font-size: 13px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--text); font-weight: 500; }
+  .plan-name:hover, .plan-name:focus { border-color: var(--border); background: #fff; outline: none; }
+  .plan-del { background: none; border: none; color: #c7c7cc; cursor: pointer; font-size: 13px; }
+  .plan-del:hover { color: var(--red); }
+  .plan-apply { background: transparent; border: 1px solid var(--border); color: var(--accent); border-radius: 980px; padding: 3px 14px; font-size: 12px; font-weight: 500; cursor: pointer; margin-right: 6px; }
+  .plan-apply:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #planArea { overflow-x: auto; }
+  @media (max-width: 1080px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    body { padding: 16px; }
+    h1 { font-size: 21px; }
+    .card { padding: 20px; }
+    input[type="number"], input[type="text"], select { padding: 9px 8px; font-size: 13.5px; }
+    #prepays .phase-inputs { flex-wrap: wrap; }
+    #prepays .phase-inputs > div { flex: 1 1 44%; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <svg class="logo" width="42" height="42" viewBox="0 0 512 512"><rect width="512" height="512" rx="110" fill="#0071e3"/><path d="M112 268 L256 140 L400 268" fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><rect x="152" y="268" width="208" height="120" rx="24" fill="#ffffff"/></svg>
+  <div>
+    <h1>住宅ローン金利シミュレーター</h1>
+    <p class="subtitle">変動金利が将来どう動くかを自分でシナリオ設定して、固定金利と比較できる無料ツール。5年ルール・125%ルール、繰上返済にも対応。データはこのブラウザにのみ保存されます。</p>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- ========== 左：入力 ========== -->
+  <div>
+    <div class="card">
+      <h2>基本設定</h2>
+      <div class="row">
+        <div>
+          <label>物件価格（万円）</label>
+          <input type="number" id="propPrice" value="4500" min="0" step="100" onchange="syncPrincipal()">
+        </div>
+        <div>
+          <label>頭金（万円）</label>
+          <input type="number" id="downPay" value="500" min="0" step="50" onchange="syncPrincipal()">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>借入額（万円）＝物件価格−頭金</label>
+          <input type="number" id="principal" value="4000" min="1" step="100">
+        </div>
+        <div>
+          <label>返済期間（年）</label>
+          <input type="number" id="years" value="35" min="1" max="50" step="1">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>返済開始 年</label>
+          <input type="number" id="startYear" value="2026" min="1990" max="2060" step="1">
+        </div>
+        <div>
+          <label>返済開始 月</label>
+          <input type="number" id="startMonth" value="10" min="1" max="12" step="1">
+        </div>
+        <div>
+          <label>返済方式</label>
+          <select id="method">
+            <option value="annuity" selected>元利均等</option>
+            <option value="equal">元金均等</option>
+          </select>
+        </div>
+      </div>
+      <p class="note">物件価格と頭金を入れると借入額が自動計算されます（借入額の直接入力もOK）。<br><b>元利均等</b>＝毎月の返済額がずっと同じ（例: 毎月12.8万円）。返済計画が立てやすく、<b>ほとんどの人はこちら</b>です。<br><b>元金均等</b>＝毎月の返済額が少しずつ減っていく方式（最初が一番高い）。総利息はやや少なくなりますが、当初の負担が重めです。<br>ペアローンの方は、まずは2人分の借入額を合算して1本として試してください（個別条件への対応は今後のアップデートで検討します）。</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:#0071e3; margin-right:7px"></span>変動金利のシナリオ</h2>
+      <p class="note" style="margin:0 0 10px">「この年月までは◯%」を並べて、将来の金利上昇シナリオを自由に作れます。未来の金利は誰にも分からないので、楽観・悲観の両方を試すのがおすすめです。</p>
+      <div id="ratePhases"></div>
+      <button class="btn-add" onclick="addRatePhase()">＋ 金利フェーズを追加</button>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>それ以降・完済までの金利（%）</label>
+          <input type="number" id="afterRate" value="2.2" min="0" max="20" step="0.05">
+        </div>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="rule5" checked>
+        <label for="rule5" style="margin:0; font-size:12.5px; color:var(--text)">5年ルール・125%ルールを適用する（この2つはセットの仕組み・元利均等のみ）</label>
+      </div>
+      <p class="note">金利が上がると、本来は毎月の返済額もすぐ上がります。ただ多くの銀行では、家計が急に苦しくならないよう2つの緩衝材が<b>セットで</b>付いています。<br>・<b>5年ルール</b>＝返済額の見直しは5年に1回だけ<br>・<b>125%ルール</b>＝見直し後の返済額は、それまでの1.25倍が上限<br><br><b>ただし、上がった分の利息が消えるわけではありません。</b>たとえば毎月10万円の返済（うち利息3万円）で金利が上がり利息が6万円になっても、支払いは10万円のまま。代わりに<b>元本に回るお金が7万円→4万円に減り、借金の減りが遅くなります</b>。負担が消えるのではなく、後ろへずれるイメージです。このズレが大きくなりすぎたときに起きる問題（未払利息・完済時の残債）も、このツールは正確に計算して警告します。<br>※一部の銀行にはこのルールが無く、金利上昇がすぐ返済額に反映されます（ネット銀行に多い方式）。ご自身の借入先・借入予定先の商品説明をご確認のうえ、無い場合はチェックを外してください。</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:#f56300; margin-right:7px"></span>固定金利</h2>
+      <div class="row">
+        <div>
+          <label>全期間固定の金利（%）</label>
+          <input type="number" id="fixedRate" value="1.8" min="0" max="20" step="0.05">
+        </div>
+      </div>
+      <p class="note">比較対象となる全期間固定型の金利です。フラット35や銀行の全期間固定の実際の金利を入れてください。</p>
+    </div>
+
+    <div class="card">
+      <h2>繰上返済（任意）</h2>
+      <div id="prepays"></div>
+      <button class="btn-add" onclick="addPrepay()">＋ 繰上返済を追加</button>
+      <p class="note">変動・固定の両方に同じ条件で適用して、公平に比較します。<br><b>期間短縮型</b>＝完済が早まるタイプ。利息の節約効果が大きく、<b>迷ったらこちら</b>。<br><b>返済額軽減型</b>＝毎月の返済額が下がるタイプ。教育費のかかる時期など、月々の家計を軽くしたいときに有効です。</p>
+    </div>
+  </div>
+
+  <!-- ========== 右：結果 ========== -->
+  <div>
+    <div class="card">
+      <h2>比較結果</h2>
+      <div id="summary"></div>
+      <div id="warnings"></div>
+    </div>
+
+    <div class="card">
+      <h2>プラン比較</h2>
+      <button class="btn-save" onclick="savePlan()">📌 現在の設定をプランとして保存</button>
+      <div id="planArea"></div>
+    </div>
+
+    <div class="card">
+      <h2>毎月の返済額の推移</h2>
+      <canvas id="payChart"></canvas>
+      <div class="legend">
+        <span class="item"><span class="dot" style="background:#0071e3"></span>変動金利</span>
+        <span class="item"><span class="dot" style="background:#f56300"></span>固定金利</span>
+        <span class="item"><span class="dot" style="background:#af52de; border-radius:50%"></span>繰上返済</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ローン残高の推移</h2>
+      <canvas id="balChart"></canvas>
+      <div class="legend">
+        <span class="item"><span class="dot" style="background:#0071e3"></span>変動金利</span>
+        <span class="item"><span class="dot" style="background:#f56300"></span>固定金利</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>年別の返済表</h2>
+      <div class="table-wrap">
+        <table id="table"></table>
+      </div>
+      <p class="note">※ 各年の12月時点（最終年は完済月時点）。「年間返済額」は繰上返済を含みます。<br>※ 計算は月次。保証料・手数料・団体信用生命保険の上乗せ・住宅ローン控除は含みません。銀行によっては5年ルールがない場合もあります（その場合はチェックを外してください）。</p>
+    </div>
+  </div>
+</div>
+
+<footer style="max-width:1360px; margin:8px auto 0;">
+  <div class="card" style="font-size:12px; color:var(--sub); line-height:1.9;">
+    <h2>このツールについて</h2>
+    <p>住宅ローン金利シミュレーターは、変動金利の将来シナリオを自分で設定して、全期間固定型と毎月の返済額・総返済額・総利息を比較できる無料ツールです。変動金利特有の5年ルール・125%ルール（返済額の据え置きと未払利息の発生）まで正確に計算し、繰上返済（期間短縮型・返済額軽減型）にも対応しています。</p>
+    <h2 style="margin-top:18px">データの取り扱い</h2>
+    <p>入力されたデータは、お使いのブラウザ内（localStorage）にのみ保存されます。<b>サーバーへの送信・収集は一切行いません</b>。「バックアップ」ボタンで設定をJSONファイルとして書き出し・復元できます。</p>
+    <h2 style="margin-top:18px">作者</h2>
+    <p>かつおらぼ ——「あったらいいのに」を形にする個人開発ラボです。<a href="https://katsuo-labs.github.io/lifeplan-simulator/" target="_blank" rel="noopener">ライフプラン・シミュレーター</a>（積立・取り崩し・配当の生涯シミュレーション）も公開しています。使い方や更新情報は <a href="https://note.com/katsuo_labs" target="_blank" rel="noopener">note</a> と <a href="https://x.com/katsuo_labs" target="_blank" rel="noopener">X（@katsuo_labs)</a> で発信しています。</p>
+    <h2 style="margin-top:18px">免責事項</h2>
+    <p>本ツールはシミュレーションによる情報提供のみを目的としており、特定の金融商品・ローン商品の推奨や勧誘、助言を行うものではありません。計算は簡易的なモデルに基づくものであり、実際の返済額・金利・銀行ごとの規定（5年ルールの有無、端数処理等）とは異なる場合があります。本ツールの利用により生じたいかなる損害についても、制作者は一切の責任を負いません。実際の借入・借り換えの判断は、金融機関の正式な試算に基づきご自身の責任で行ってください。</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+      <button class="btn-reset" onclick="exportState()" title="設定をJSONファイルに書き出して保存">💾 バックアップ</button>
+      <button class="btn-reset" onclick="importState()" title="バックアップしたJSONファイルから復元">📂 復元</button>
+      <button class="btn-reset" onclick="resetAll()" title="保存された設定を消去して初期状態に戻す">🗑 リセット</button>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ---- 状態 ----
+// 金利フェーズ: {endYear, endMonth, rate} 「この年月までは rate %」
+let ratePhases = [
+  { endYear: 2028, endMonth: 9, rate: 0.7 },
+  { endYear: 2033, endMonth: 9, rate: 1.5 },
+];
+// 繰上返済: {year, month, amount, type: 'shorten'|'reduce', memo}
+let prepays = [];
+// 保存プラン: {name, settings}
+let savedPlans = [];
+let planSeq = 0;
+
+const STORAGE_KEY = 'loan-sim-v1';
+const INPUT_IDS = ['propPrice', 'downPay', 'principal', 'years', 'startYear', 'startMonth', 'method', 'afterRate', 'rule5', 'fixedRate'];
+
+// 物件価格・頭金 → 借入額を自動計算
+function syncPrincipal() {
+  const price = +document.getElementById('propPrice').value || 0;
+  const down = +document.getElementById('downPay').value || 0;
+  document.getElementById('principal').value = Math.max(0, price - down);
+}
+
+function saveState() {
+  try {
+    const inputs = {};
+    INPUT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      inputs[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ inputs, ratePhases, prepays, savedPlans, planSeq }));
+  } catch (e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const st = JSON.parse(raw);
+    if (st.inputs) INPUT_IDS.forEach(id => {
+      if (st.inputs[id] == null) return;
+      const el = document.getElementById(id);
+      if (el.type === 'checkbox') el.checked = !!st.inputs[id];
+      else el.value = st.inputs[id];
+    });
+    if (Array.isArray(st.ratePhases) && st.ratePhases.length) ratePhases = st.ratePhases;
+    if (Array.isArray(st.prepays)) prepays = st.prepays;
+    if (Array.isArray(st.savedPlans)) savedPlans = st.savedPlans;
+    if (typeof st.planSeq === 'number') planSeq = st.planSeq;
+  } catch (e) {}
+}
+function resetAll() {
+  if (!confirm('保存された設定を消去して、初期状態に戻します。よろしいですか？')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  location.reload();
+}
+function exportState() {
+  saveState();
+  const raw = localStorage.getItem(STORAGE_KEY) || '{}';
+  const blob = new Blob([raw], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'loan-sim-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importState() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = () => {
+    const f = input.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        JSON.parse(reader.result);
+        localStorage.setItem(STORAGE_KEY, reader.result);
+        location.reload();
+      } catch (e) { alert('ファイルを読み込めませんでした。「バックアップ」で保存したJSONファイルを選んでください。'); }
+    };
+    reader.readAsText(f);
+  };
+  input.click();
+}
+
+// ---- 年月ユーティリティ ----
+function startYM() {
+  return {
+    sy: +document.getElementById('startYear').value || 2026,
+    sm: +document.getElementById('startMonth').value || 1,
+  };
+}
+function calT(y, m) { return y * 12 + (m - 1); }
+// t: 返済開始からの経過月（0始まり）
+function tOf(y, m) { const { sy, sm } = startYM(); return calT(y, m) - calT(sy, sm); }
+function ymOfT(t) {
+  const { sy, sm } = startYM();
+  const a = calT(sy, sm) + t;
+  return { y: Math.floor(a / 12), m: (a % 12) + 1 };
+}
+function ymStr(t) { const c = ymOfT(t); return `${c.y}年${c.m}月`; }
+function durStr(months) {
+  const y = Math.floor(months / 12), m = months % 12;
+  if (y > 0 && m > 0) return `${y}年${m}ヶ月`;
+  if (y > 0) return `${y}年`;
+  return `${m}ヶ月`;
+}
+function fmt(man) {
+  const v = Math.round(man);
+  if (Math.abs(v) >= 10000) {
+    const oku = Math.floor(Math.abs(v) / 10000);
+    const rest = Math.abs(v) % 10000;
+    const sign = v < 0 ? '-' : '';
+    return rest > 0 ? `${sign}${oku}億${rest.toLocaleString()}万円` : `${sign}${oku}億円`;
+  }
+  return `${v.toLocaleString()}万円`;
+}
+function fmtM(man) {  // 月々用: 小数1桁の万円
+  return `${(Math.round(man * 10) / 10).toLocaleString()}万円`;
+}
+
+// ---- 金利フェーズ編集 ----
+function renderRatePhases() {
+  const el = document.getElementById('ratePhases');
+  el.innerHTML = ratePhases.map((p, i) => `
+    <div class="phase">
+      <div class="phase-inputs">
+        <span class="num">${i + 1}</span>
+        <div style="flex:0.95">
+          <label>〜西暦（年）</label>
+          <input type="number" value="${p.endYear}" min="1990" max="2100" step="1"
+            onchange="ratePhases[${i}].endYear = +this.value; simulate()">
+        </div>
+        <div style="flex:0.6">
+          <label>〜月まで</label>
+          <input type="number" value="${p.endMonth}" min="1" max="12" step="1"
+            onchange="ratePhases[${i}].endMonth = +this.value; simulate()">
+        </div>
+        <div style="flex:0.9">
+          <label>金利（%）</label>
+          <input type="number" value="${p.rate}" min="0" max="20" step="0.05"
+            onchange="ratePhases[${i}].rate = +this.value; simulate()">
+        </div>
+        <button onclick="removeRatePhase(${i})" title="削除">✕</button>
+      </div>
+      <div class="caption" id="rateCap${i}"></div>
+    </div>`).join('');
+}
+function addRatePhase() {
+  const last = ratePhases[ratePhases.length - 1];
+  ratePhases.push({
+    endYear: (last ? last.endYear : startYM().sy + 5) + 5,
+    endMonth: last ? last.endMonth : startYM().sm,
+    rate: last ? Math.round((last.rate + 0.5) * 100) / 100 : 1.0,
+  });
+  renderRatePhases();
+  simulate();
+}
+function removeRatePhase(i) {
+  ratePhases.splice(i, 1);
+  renderRatePhases();
+  simulate();
+}
+function updateRateCaptions() {
+  let cursor = 0;
+  ratePhases.forEach((p, i) => {
+    const el = document.getElementById(`rateCap${i}`);
+    if (!el) return;
+    const end = tOf(p.endYear, p.endMonth);
+    if (end < cursor) {
+      el.innerHTML = `<span class="warn">⚠ 前のフェーズより前の年月です（${ymStr(cursor)}以降を指定してください）</span>`;
+    } else {
+      el.textContent = `${ymStr(cursor)} 〜 ${ymStr(end)}（開始${cursor === 0 ? '' : durStr(cursor) + '後'}〜${durStr(end + 1)}目まで）: 年${p.rate}%`;
+      cursor = end + 1;
+    }
+  });
+}
+
+// ---- 繰上返済編集 ----
+function renderPrepays() {
+  const el = document.getElementById('prepays');
+  el.innerHTML = prepays.map((p, i) => `
+    <div class="phase" style="border-left:3px solid #af52de">
+      <div class="phase-inputs">
+        <span class="num">${i + 1}</span>
+        <div style="flex:0.8">
+          <label>年</label>
+          <input type="number" value="${p.year}" min="1990" max="2100" step="1"
+            onchange="prepays[${i}].year = +this.value; simulate()">
+        </div>
+        <div style="flex:0.5">
+          <label>月</label>
+          <input type="number" value="${p.month}" min="1" max="12" step="1"
+            onchange="prepays[${i}].month = +this.value; simulate()">
+        </div>
+        <div>
+          <label>金額（万円）</label>
+          <input type="number" value="${p.amount}" min="0" step="10"
+            onchange="prepays[${i}].amount = +this.value; simulate()">
+        </div>
+        <div style="flex:1.2">
+          <label>型</label>
+          <select onchange="prepays[${i}].type = this.value; simulate()">
+            <option value="shorten" ${p.type === 'shorten' ? 'selected' : ''}>期間短縮</option>
+            <option value="reduce" ${p.type === 'reduce' ? 'selected' : ''}>返済額軽減</option>
+          </select>
+        </div>
+        <button onclick="removePrepay(${i})" title="削除">✕</button>
+      </div>
+      <div class="phase-inputs" style="padding-left:22px; margin-bottom:4px">
+        <div>
+          <label>メモ</label>
+          <input type="text" value="${(p.memo || '').replace(/"/g, '&quot;')}" placeholder="例: 10年目のボーナスで"
+            onchange="prepays[${i}].memo = this.value; simulate()">
+        </div>
+      </div>
+      <div class="caption" id="prepayCap${i}"></div>
+    </div>`).join('');
+}
+function addPrepay() {
+  const { sy, sm } = startYM();
+  prepays.push({ year: sy + 10, month: sm, amount: 300, type: 'shorten', memo: '' });
+  renderPrepays();
+  simulate();
+}
+function removePrepay(i) {
+  prepays.splice(i, 1);
+  renderPrepays();
+  simulate();
+}
+function updatePrepayCaptions(nMonths) {
+  prepays.forEach((p, i) => {
+    const el = document.getElementById(`prepayCap${i}`);
+    if (!el) return;
+    const t = tOf(p.year, p.month);
+    if (t < 0 || t >= nMonths) {
+      el.innerHTML = `<span class="warn">⚠ 返済期間外の年月です</span>`;
+    } else {
+      el.textContent = `${ymStr(t)}（${durStr(t)}目）に ${fmt(p.amount)} を繰上返済（${p.type === 'shorten' ? '期間短縮' : '返済額軽減'}）${p.memo ? `「${p.memo}」` : ''}`;
+    }
+  });
+}
+
+// ---- 計算エンジン ----
+function annuity(bal, i, nRem) {
+  if (nRem <= 0) return bal * (1 + i);
+  if (i <= 0) return bal / nRem;
+  const k = Math.pow(1 + i, nRem);
+  return bal * i * k / (k - 1);
+}
+
+// cfg: {P, n, method, rateAt(t)->%, rule5, prepayMap: Map t->[{amount,type}]}
+function simulatePlan(cfg) {
+  const { P, n, method, rateAt, rule5, prepayMap } = cfg;
+  let balance = P;
+  let unpaid = 0;                 // 未払利息プール
+  let M = 0;                      // 元利均等の毎月返済額
+  let principalPart = P / n;      // 元金均等の毎月元本
+  let prevRate = null;
+  const rows = [];
+  let totalPaid = 0, totalInterest = 0, totalPrepay = 0;
+  let maxM = 0;
+  let unpaidEver = false, cap125 = false;
+  let finalLump = 0;
+
+  for (let t = 0; t < n && (balance > 0.0001 || unpaid > 0.0001); t++) {
+    const r = rateAt(t);
+    const i = r / 100 / 12;
+
+    if (method === 'annuity') {
+      if (t === 0) {
+        M = annuity(balance, i, n);
+      } else if (rule5) {
+        if (t % 60 === 0) {   // 5年ごとの返済額見直し
+          const Mn = annuity(balance + unpaid, i, n - t);
+          if (Mn > M * 1.25) { M = M * 1.25; cap125 = true; }
+          else M = Mn;
+        }
+      } else if (prevRate !== null && r !== prevRate) {
+        M = annuity(balance, i, n - t);   // ルールなし: 金利変更で即再計算
+      }
+    }
+    prevRate = r;
+
+    const interest = balance * i;
+    let pay, interestPaid, principalPaid = 0, payUnpaid = 0;
+
+    if (method === 'annuity') {
+      pay = M;
+      const need = unpaid + interest + balance;
+      if (pay > need) pay = need;             // 最終月の端数調整
+      payUnpaid = Math.min(pay, unpaid);      // 支払は未払利息→利息→元本の順
+      unpaid -= payUnpaid;
+      let rest = pay - payUnpaid;
+      interestPaid = Math.min(rest, interest);
+      const short = interest - interestPaid;
+      if (short > 0.0001) { unpaid += short; unpaidEver = true; }
+      rest -= interestPaid;
+      principalPaid = Math.min(rest, balance);
+      balance -= principalPaid;
+      if (M > maxM) maxM = M;
+    } else {
+      const pp = Math.min(principalPart, balance);
+      interestPaid = interest;
+      principalPaid = pp;
+      pay = pp + interest;
+      balance -= pp;
+      if (pay > maxM) maxM = pay;
+    }
+    totalPaid += pay;
+    totalInterest += interestPaid + payUnpaid;
+
+    // 繰上返済（その月の返済後に実行）
+    let prepaidAmt = 0;
+    for (const pp of (prepayMap.get(t) || [])) {
+      const A = Math.min(pp.amount, balance);
+      if (A <= 0) continue;
+      balance -= A;
+      prepaidAmt += A;
+      totalPaid += A;
+      totalPrepay += A;
+      if (pp.type === 'reduce') {
+        if (method === 'annuity') M = annuity(balance + unpaid, i, Math.max(1, n - t - 1));
+        else principalPart = balance / Math.max(1, n - t - 1);
+      }
+    }
+
+    rows.push({ t, rate: r, pay, scheduled: method === 'annuity' ? M : pay,
+                interestPaid: interestPaid + payUnpaid, principalPaid, prepay: prepaidAmt,
+                balance, unpaid });
+
+    // 期間満了時に残債・未払利息があれば一括清算
+    if (t === n - 1 && (balance > 0.0001 || unpaid > 0.0001)) {
+      finalLump = balance + unpaid;
+      totalPaid += finalLump;
+      totalInterest += unpaid;
+      balance = 0; unpaid = 0;
+    }
+  }
+
+  const months = rows.length;
+  return { rows, totalPaid, totalInterest, totalPrepay,
+           firstM: rows.length ? rows[0].scheduled : 0, maxM, months,
+           unpaidEver, cap125, finalLump };
+}
+
+// 現在の設定一式を取得（プラン保存にも使う）
+function readFullSettings() {
+  const g = id => +document.getElementById(id).value || 0;
+  return {
+    propPrice: g('propPrice'), downPay: g('downPay'),
+    principal: g('principal'), years: g('years'),
+    startYear: g('startYear'), startMonth: g('startMonth') || 1,
+    method: document.getElementById('method').value,
+    afterRate: g('afterRate'),
+    rule5: document.getElementById('rule5').checked,
+    fixedRate: g('fixedRate'),
+    ratePhases: ratePhases.map(p => ({ ...p })),
+    prepays: prepays.map(p => ({ ...p })),
+  };
+}
+
+// 設定一式から変動・固定の両プランを計算（保存プランの再計算にも使う）
+function computeFromSettings(s) {
+  const P = s.principal;
+  const n = Math.round(s.years * 12);
+  const base = s.startYear * 12 + (s.startMonth - 1);
+  const tOfS = (y, m) => y * 12 + (m - 1) - base;
+
+  const bounds = [];
+  let cursor = 0;
+  for (const p of s.ratePhases) {
+    const end = tOfS(p.endYear, p.endMonth);
+    if (end >= cursor) { bounds.push({ end, rate: p.rate }); cursor = end + 1; }
+  }
+  const varRateAt = t => {
+    for (const b of bounds) if (t <= b.end) return b.rate;
+    return s.afterRate;
+  };
+
+  const prepayMap = new Map();
+  for (const p of s.prepays) {
+    const t = tOfS(p.year, p.month);
+    if (t < 0 || t >= n) continue;
+    if (!prepayMap.has(t)) prepayMap.set(t, []);
+    prepayMap.get(t).push({ amount: p.amount, type: p.type });
+  }
+
+  const vari = simulatePlan({ P, n, method: s.method, rateAt: varRateAt, rule5: s.rule5, prepayMap });
+  const fix = simulatePlan({ P, n, method: s.method, rateAt: () => s.fixedRate, rule5: false, prepayMap });
+  return { vari, fix, P, n, prepayMap };
+}
+
+// ---- プラン比較 ----
+function savePlan() {
+  planSeq++;
+  savedPlans.push({ name: `プラン${planSeq}`, settings: readFullSettings() });
+  simulate();
+}
+function removePlan(i) { savedPlans.splice(i, 1); simulate(); }
+function renamePlan(i, name) { savedPlans[i].name = name || savedPlans[i].name; simulate(); }
+function applyPlan(i) {
+  const p = savedPlans[i];
+  if (!confirm(`「${p.name}」の設定を現在のプランに反映します。\n現在の編集内容は上書きされます（保存済みプランは残ります）。よろしいですか？`)) return;
+  const s = p.settings;
+  const setv = (id, v) => { if (v != null) document.getElementById(id).value = v; };
+  setv('propPrice', s.propPrice); setv('downPay', s.downPay);
+  setv('principal', s.principal); setv('years', s.years);
+  setv('startYear', s.startYear); setv('startMonth', s.startMonth);
+  setv('afterRate', s.afterRate); setv('fixedRate', s.fixedRate);
+  document.getElementById('method').value = s.method || 'annuity';
+  document.getElementById('rule5').checked = !!s.rule5;
+  ratePhases = (s.ratePhases || []).map(q => ({ ...q }));
+  prepays = (s.prepays || []).map(q => ({ ...q }));
+  renderRatePhases();
+  renderPrepays();
+  simulate();
+}
+
+function renderPlanArea(planResults, cur) {
+  const el = document.getElementById('planArea');
+  if (!planResults.length) {
+    el.innerHTML = '<p class="note" style="margin-top:0">保存を押すと、そのときの設定一式（借入条件・金利シナリオ・繰上返済）がプランとして固定されます。金利シナリオを変えて何個か保存すると、この表で並べて比較できます。</p>';
+    return;
+  }
+  const cell = r => {
+    const diff = r.vari.totalPaid - r.fix.totalPaid;
+    return `
+    <td>${fmt(r.vari.totalPaid)}</td>
+    <td>${fmt(r.fix.totalPaid)}</td>
+    <td><b>${diff < 0 ? '変動' : '固定'}が${fmt(Math.abs(diff))}安い</b></td>
+    <td>${fmtM(r.vari.firstM)} → ${fmtM(r.vari.maxM)}</td>`;
+  };
+  el.innerHTML = `<table>
+    <thead><tr><th>プラン</th><th>変動 総返済</th><th>固定 総返済</th><th>結論</th><th>変動の月々（当初→最大）</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot" style="background:#0f172a"></span> 現在の設定</td>${cell(cur)}<td></td></tr>
+      ${planResults.map((p, i) => `<tr>
+        <td><input type="text" class="plan-name" value="${p.name.replace(/"/g, '&quot;')}" onchange="renamePlan(${i}, this.value)"></td>
+        ${cell(p.r)}
+        <td style="white-space:nowrap"><button class="plan-apply" onclick="applyPlan(${i})" title="このプランの設定を反映">反映</button><button class="plan-del" onclick="removePlan(${i})" title="削除">✕</button></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <p class="note">プラン名はクリックで編集。「反映」でそのプランの設定を呼び出せます。</p>`;
+}
+
+// ---- メイン ----
+function simulate() {
+  const s = readFullSettings();
+  updateRateCaptions();
+  updatePrepayCaptions(Math.round(s.years * 12));
+
+  const c = computeFromSettings(s);
+  const planResults = savedPlans.map(p => ({ ...p, r: computeFromSettings(p.settings) }));
+
+  renderSummary(c.vari, c.fix, c);
+  renderPlanArea(planResults, c);
+  drawPayChart(c.vari, c.fix, c);
+  drawBalChart(c.vari, c.fix, c);
+  renderTable(c.vari, c.fix, c);
+  saveState();
+}
+
+function renderSummary(vari, fix, c) {
+  const diff = vari.totalPaid - fix.totalPaid;
+  const cheaper = diff < 0 ? '変動' : '固定';
+  const planCard = (cls, tag, r) => `
+    <div class="tl-card ${cls}">
+      <div class="tag">${tag}</div>
+      <div class="big">${fmt(r.totalPaid)}</div>
+      <div class="tl-row"><span>うち利息</span><b>${fmt(r.totalInterest)}</b></div>
+      <div class="tl-row"><span>当初の月々返済額</span><b>${fmtM(r.firstM)}</b></div>
+      <div class="tl-row"><span>最大の月々返済額</span><b>${fmtM(r.maxM)}</b></div>
+      <div class="tl-row"><span>完済</span><b>${ymStr(r.months - 1)}（${durStr(r.months)}）</b></div>
+      ${r.totalPrepay > 0 ? `<div class="tl-row"><span>繰上返済 計</span><b>${fmt(r.totalPrepay)}</b></div>` : ''}
+    </div>`;
+  document.getElementById('summary').innerHTML = `
+    <div class="timeline">
+      ${planCard('blue', '<span class="dot" style="background:#0071e3; margin-right:5px"></span>変動金利（総返済額）', vari)}
+      ${planCard('orange', '<span class="dot" style="background:#f56300; margin-right:5px"></span>固定金利（総返済額）', fix)}
+      <div class="tl-card green">
+        <div class="tag">このシナリオでは</div>
+        <div class="big" style="margin-bottom:2px">${fmt(Math.abs(diff))}</div>
+        <div class="when" style="font-weight:600; color:var(--text); font-size:14px; margin-bottom:12px">${cheaper}金利のほうが安い</div>
+        <div class="tl-row"><span>変動の総返済額</span><b>${fmt(vari.totalPaid)}</b></div>
+        <div class="tl-row"><span>固定の総返済額</span><b>${fmt(fix.totalPaid)}</b></div>
+        <div class="tl-row"><span>利息の差</span><b>${fmt(Math.abs(vari.totalInterest - fix.totalInterest))}</b></div>
+      </div>
+    </div>`;
+
+  // 警告（変動プランに関する注意を平易な文章で）
+  const yearsTotal = Math.round(c.n / 12);
+  const warns = [];
+  if (vari.cap125) {
+    warns.push(`<div class="tl-card" style="margin-top:8px; border-color:#fed7aa; background:#fff7ed">
+      <div class="tag" style="background:#ffedd5; color:var(--orange)">変動プラン: 125%ルールが上限に到達</div>
+      <div style="font-size:12.5px; color:var(--text); line-height:1.7">このシナリオでは金利の上昇が大きく、5年ごとの見直しで返済額が「1.25倍まで」の上限で頭打ちになっています。<b>支払いが抑えられた分の負担は消えておらず、後ろへ繰り延べられています。</b></div>
+    </div>`);
+  }
+  if (vari.unpaidEver) {
+    warns.push(`<div class="tl-card red" style="margin-top:8px">
+      <div class="tag">⚠ 変動プラン: 「未払利息」が発生します</div>
+      <div style="font-size:12.5px; color:var(--text); line-height:1.7">金利が上がりすぎて、<b>毎月の返済額では利息すら払いきれない月</b>があります。払いきれない利息は消えずに借金として積み上がり、その間<b>元本は1円も減りません</b>。下の残高グラフで、残高が横ばい〜増えている区間がそれです。</div>
+    </div>`);
+  }
+  if (vari.finalLump > 0.5 || fix.finalLump > 0.5) {
+    const lump = Math.max(vari.finalLump, fix.finalLump);
+    warns.push(`<div class="tl-card red" style="margin-top:8px">
+      <div class="tag">⚠ 変動プラン: ${yearsTotal}年で返しきれません</div>
+      <div style="font-size:12.5px; color:var(--text); line-height:1.7">5年ルールで毎月の返済額が低く抑えられた結果、期間内に元本を返しきれず、<b>最終回に ${fmt(lump)} をまとめて精算</b>する計算になります。実際の銀行では、期間延長や返済額の見直しを相談することになるケースです。</div>
+    </div>`);
+  }
+  document.getElementById('warnings').innerHTML = warns.join('');
+}
+
+// ---- グラフ ----
+function setupCanvas(id) {
+  const canvas = document.getElementById(id);
+  const w = canvas.clientWidth, h = canvas.clientHeight || 320;
+  if (!w) return null;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+function drawAxes(ctx, w, h, maxT, maxV, fmtY) {
+  const padL = 62, padR = 14, padT = 14, padB = 30;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const x = t => padL + (t / Math.max(1, maxT)) * plotW;
+  const y = v => padT + plotH - (v / maxV) * plotH;
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.strokeStyle = '#eef2f6';
+  for (let i = 0; i <= 4; i++) {
+    const v = (maxV / 4) * i;
+    ctx.beginPath(); ctx.moveTo(padL, y(v)); ctx.lineTo(w - padR, y(v)); ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtY(v), padL - 6, y(v) + 4);
+  }
+  // X軸: 5年ごとに西暦ラベル
+  ctx.textAlign = 'center';
+  const step = maxT > 300 ? 60 : maxT > 120 ? 60 : 24;
+  for (let t = 0; t <= maxT; t += step) {
+    ctx.fillText(`${ymOfT(t).y}`, x(t), h - padB + 18);
+  }
+  return { x, y, padT, plotH };
+}
+
+function drawLine(ctx, pts, x, y, color, width = 2) {
+  if (pts.length < 2) return;
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(x(p.t), y(p.v)) : ctx.lineTo(x(p.t), y(p.v)));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+function drawPayChart(vari, fix, c) {
+  const cv = setupCanvas('payChart');
+  if (!cv) return;
+  const { ctx, w, h } = cv;
+  const vp = vari.rows.map(r => ({ t: r.t, v: r.scheduled }));
+  const fp = fix.rows.map(r => ({ t: r.t, v: r.scheduled }));
+  const maxT = Math.max(vari.months, fix.months) - 1;
+  const maxV = Math.max(...vp.map(p => p.v), ...fp.map(p => p.v)) * 1.15 || 1;
+  const { x, y, padT, plotH } = drawAxes(ctx, w, h, maxT, maxV, v => fmtM(v));
+  drawLine(ctx, fp, x, y, '#f56300', 2);
+  drawLine(ctx, vp, x, y, '#0071e3', 2.5);
+  // 繰上返済マーカー
+  for (const [t] of c.prepayMap) {
+    const r = vari.rows.find(q => q.t === t);
+    if (!r) continue;
+    ctx.beginPath();
+    ctx.arc(x(t), y(r.scheduled), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#af52de'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+
+function drawBalChart(vari, fix, c) {
+  const cv = setupCanvas('balChart');
+  if (!cv) return;
+  const { ctx, w, h } = cv;
+  const vp = vari.rows.map(r => ({ t: r.t, v: r.balance + r.unpaid }));
+  const fp = fix.rows.map(r => ({ t: r.t, v: r.balance }));
+  const maxT = Math.max(vari.months, fix.months) - 1;
+  const maxV = Math.max(c.P, ...vp.map(p => p.v)) * 1.08 || 1;
+  const { x, y } = drawAxes(ctx, w, h, maxT, maxV, v => fmt(v));
+  // 塗り（変動のみ薄く）
+  ctx.beginPath();
+  ctx.moveTo(x(0), y(0));
+  vp.forEach(p => ctx.lineTo(x(p.t), y(p.v)));
+  ctx.lineTo(x(vp[vp.length - 1].t), y(0));
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(0,113,227,0.18)');
+  g.addColorStop(1, 'rgba(0,113,227,0.02)');
+  ctx.fillStyle = g;
+  ctx.fill();
+  drawLine(ctx, fp, x, y, '#f56300', 2);
+  drawLine(ctx, vp, x, y, '#0071e3', 2.5);
+  for (const [t] of c.prepayMap) {
+    const r = vari.rows.find(q => q.t === t);
+    if (!r) continue;
+    ctx.beginPath();
+    ctx.arc(x(t), y(r.balance + r.unpaid), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#af52de'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+
+// ---- 年別の表 ----
+function renderTable(vari, fix, c) {
+  const maxMonths = Math.max(vari.months, fix.months);
+  const idxs = [];
+  for (let t = 11; t < maxMonths; t += 12) idxs.push(t);
+  if ((maxMonths - 1) % 12 !== 11) idxs.push(maxMonths - 1);
+
+  const sumRange = (rows, a, b, key) => rows.filter(r => r.t >= a && r.t <= b).reduce((s, r) => s + r[key], 0);
+  const at = (rows, t) => rows.find(r => r.t === t) || null;
+  const rowAtOrBefore = (rows, t) => {
+    for (let k = rows.length - 1; k >= 0; k--) if (rows[k].t <= t) return rows[k];
+    return null;
+  };
+
+  const html = idxs.map((t, i) => {
+    const a = i === 0 ? 0 : idxs[i - 1] + 1;
+    const v = at(vari.rows, t), vb = rowAtOrBefore(vari.rows, t);
+    const f = at(fix.rows, t), fb = rowAtOrBefore(fix.rows, t);
+    const vDone = !v && vb;
+    const fDone = !f && fb;
+    const vPayY = sumRange(vari.rows, a, t, 'pay') + sumRange(vari.rows, a, t, 'prepay');
+    const fPayY = sumRange(fix.rows, a, t, 'pay') + sumRange(fix.rows, a, t, 'prepay');
+    return `<tr>
+      <td>${ymStr(t)}</td>
+      <td>${durStr(t + 1)}</td>
+      <td class="sep-l">${v ? v.rate.toFixed(2) + '%' : '—'}</td>
+      <td>${v ? fmtM(v.scheduled) : '—'}</td>
+      <td>${vDone ? '完済' : fmt(vPayY)}</td>
+      <td class="${v && v.unpaid > 0.5 ? 'neg' : ''}">${v ? fmt(v.balance + v.unpaid) : '0万円'}</td>
+      <td class="sep-l">${f ? fmtM(f.scheduled) : '—'}</td>
+      <td>${fDone ? '完済' : fmt(fPayY)}</td>
+      <td>${f ? fmt(f.balance) : '0万円'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('table').innerHTML = `
+    <thead>
+      <tr class="grp-row">
+        <th colspan="2"></th>
+        <th colspan="4" class="sep-l"><span class="dot" style="background:#0071e3; margin-right:5px"></span>変動金利</th>
+        <th colspan="3" class="sep-l"><span class="dot" style="background:#f56300; margin-right:5px"></span>固定金利</th>
+      </tr>
+      <tr>
+        <th>年月</th><th>経過</th>
+        <th class="sep-l">適用金利</th><th>月々返済額</th><th>年間返済額</th><th>残高</th>
+        <th class="sep-l">月々返済額</th><th>年間返済額</th><th>残高</th>
+      </tr>
+    </thead>
+    <tbody>${html}</tbody>`;
+}
+
+// 入力変更で再計算
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('change', simulate));
+window.addEventListener('resize', () => simulate());
+
+loadState();
+renderRatePhases();
+renderPrepays();
+simulate();
+</script>
+</body>
+</html>
